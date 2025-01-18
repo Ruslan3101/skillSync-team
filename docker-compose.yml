@@ -1,0 +1,64 @@
+version: "3.8"
+
+services:
+   mongo:
+    image: mongo:8.0
+    container_name: skillsync_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - skillsync-team_mongo-data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: adminUser
+      MONGO_INITDB_ROOT_PASSWORD: adminPassword
+    restart: always
+
+   mongo-express:
+     image: mongo-express
+     container_name: skillsync_mongo_express
+     ports:
+       - "8081:8081"
+     environment:
+       ME_CONFIG_BASICAUTH: "true"
+       ME_CONFIG_BASICAUTH_USERNAME: adminUser
+       ME_CONFIG_BASICAUTH_PASSWORD: adminPassword
+       ME_CONFIG_MONGODB_URL: mongodb://adminUser:adminPassword@mongo:27017/skillsyncdb?authSource=admin
+
+     depends_on:
+       - mongo
+     restart: always
+
+   backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: skillsync_backend
+    ports:
+      - "4000:4000"
+    environment:
+      MONGO_URI: ${MONGO_URI}
+      PORT: ${PORT}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - mongo
+    restart: always
+
+   frontend:
+     build:
+       context: ./frontend
+       dockerfile: Dockerfile
+     container_name: skillsync_frontend
+     ports:
+       - "3000:3000"
+     environment:
+       VITE_API_URL: http://localhost:4000
+     volumes:
+       - ./frontend:/frontend
+       - /frontend/node_modules
+     depends_on:
+       - backend
+     restart: always
+
+volumes:
+  skillsync-team_mongo-data:
+    external: true
